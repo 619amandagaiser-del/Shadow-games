@@ -1,38 +1,78 @@
-const express = require("express");
-const fetch = (...args) => import("node-fetch").then(({default: fetch}) => fetch(...args));
+import express from "express"
+import fetch from "node-fetch"
+import { JSDOM } from "jsdom"
 
-const app = express();
+const app = express()
 
-app.use(express.static("public"));
+app.use(express.static("public"))
 
-app.get("/proxy", async (req, res) => {
+function rewriteHTML(html, baseURL) {
 
-    let url = req.query.url;
+const dom = new JSDOM(html)
+const document = dom.window.document
 
-    if (!url) {
-        return res.send("No URL provided");
-    }
+document.querySelectorAll("a").forEach(link=>{
+let href = link.getAttribute("href")
+if(href && !href.startsWith("http")){
+link.href = "/proxy?url=" + encodeURIComponent(new URL(href, baseURL))
+}
+})
 
-    try {
+document.querySelectorAll("img,script,link").forEach(el=>{
+let src = el.src || el.href
+if(src){
+if(el.src) el.src = "/proxy?url=" + encodeURIComponent(src)
+if(el.href) el.href = "/proxy?url=" + encodeURIComponent(src)
+}
+})
 
-        if (!url.startsWith("http")) {
-            url = "https://" + url;
-        }
+return dom.serialize()
+}
 
-        const response = await fetch(url);
+app.get("/proxy", async (req,res)=>{
 
-        let html = await response.text();
+let target = req.query.url
 
-        html = html.replace(/(href|src)=["']\/(.*?)["']/g, `$1="${url}/$2"`);
+if(!target){
+return res.send("No URL")
+}
 
-        res.send(html);
+try{
 
-    } catch (err) {
-        res.send("Proxy error: " + err.message);
-    }
+const response = await fetch(target,{
+headers:{
+"user-agent":"Mozilla/5.0"
+}
+})
 
-});
+let contentType = response.headers.get("content-type")
 
-app.listen(3000, () => {
-    console.log("Proxy running on port 3000");
-});
+if(contentType.includes("text/html")){
+
+let html = await response.text()
+
+html = rewriteHTML(html,target)
+
+res.send(html)
+
+}else{
+
+const buffer = await response.arrayBuffer()
+
+res.set("content-type",contentType)
+
+res.send(Buffer.from(buffer))
+
+}
+
+}catch(err){
+
+res.send("Proxy error: "+err.message)
+
+}
+
+})
+
+app.listen(3000,()=>{
+console.log("Proxy running on http://localhost:3000")
+})

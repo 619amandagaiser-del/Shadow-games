@@ -1,1 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Simple Web Proxy</title>
+<style>
 
+body{
+font-family:Arial;
+background:#0f172a;
+color:white;
+text-align:center;
+padding:40px;
+}
+
+input{
+width:60%;
+padding:10px;
+font-size:18px;
+border-radius:6px;
+border:none;
+}
+
+button{
+padding:10px 20px;
+font-size:18px;
+background:#2563eb;
+border:none;
+color:white;
+border-radius:6px;
+cursor:pointer;
+}
+
+</style>
+</head>
+
+<body>
+
+<h1>Web Proxy</h1>
+
+<input id="url" placeholder="Enter website">
+
+<button onclick="go()">Go</button>
+
+<script>
+
+function go(){
+
+let url = document.getElementById("url").value
+
+window.location = "/proxy?url=" + encodeURIComponent(url)
+
+}
+
+</script>
+
+</body>
+</html>
